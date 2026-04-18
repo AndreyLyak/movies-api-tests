@@ -3,7 +3,7 @@ import requests
 import uuid
 from auth import get_auth_token
 from constants import BASE_URL, MOVIES_ENDPOINT
-
+from api.api_manager import ApiManager
 
 @pytest.fixture
 def auth_token():
@@ -279,3 +279,19 @@ def show_review(api_client):
 
     return _show_review
 
+@pytest.fixture(scope="session")
+def session():
+
+    http_session = requests.Session()
+    token = get_auth_token()
+    http_session.headers.update({
+        "Authorization": f"Bearer {token}"
+    })
+    yield http_session
+    http_session.close()
+
+
+@pytest.fixture(scope="session")
+def api_manager(session):
+
+    return ApiManager(session)
