@@ -1,5 +1,5 @@
 from custom_requester.custom_requester import CustomRequester
-from constants import MOVIES_ENDPOINT
+# from constants import MOVIES_ENDPOINT
 
 
 class MoviesAPI(CustomRequester):
@@ -8,12 +8,13 @@ class MoviesAPI(CustomRequester):
     def __init__(self, session):
         # Базовый URL для API фильмов
         super().__init__(session, base_url="https://api.dev-cinescope.coconutqa.ru")
+        self.movies_endpoint = "/movies"
 
     def create_movie(self, movie_data, expected_status=201):
         """Создать фильм"""
         return self.send_request(
             method="POST",
-            endpoint=MOVIES_ENDPOINT,
+            endpoint=self.movies_endpoint,
             data=movie_data,
             expected_status=expected_status
         )
@@ -22,16 +23,16 @@ class MoviesAPI(CustomRequester):
         """Получить фильм по ID"""
         return self.send_request(
             method="GET",
-            endpoint=f"{MOVIES_ENDPOINT}/{movie_id}",
+            endpoint=f"{self.movies_endpoint}/{movie_id}",
             expected_status=expected_status
         )
 
     def get_movies(self, params=None, expected_status=200):
         """Получить список фильмов с фильтрацией"""
-        endpoint = MOVIES_ENDPOINT
+        endpoint = self.movies_endpoint
         if params:
             query = "&".join([f"{k}={v}" for k, v in params.items()])
-            endpoint = f"{MOVIES_ENDPOINT}?{query}"
+            endpoint = f"{self.movies_endpoint}?{query}"
         return self.send_request(
             method="GET",
             endpoint=endpoint,
@@ -42,7 +43,7 @@ class MoviesAPI(CustomRequester):
         """Обновить фильм (частично)"""
         return self.send_request(
             method="PATCH",
-            endpoint=f"{MOVIES_ENDPOINT}/{movie_id}",
+            endpoint=f"{self.movies_endpoint}/{movie_id}",
             data=update_data,
             expected_status=expected_status
         )
@@ -51,6 +52,6 @@ class MoviesAPI(CustomRequester):
         """Удалить фильм"""
         return self.send_request(
             method="DELETE",
-            endpoint=f"{MOVIES_ENDPOINT}/{movie_id}",
+            endpoint=f"{self.movies_endpoint}/{movie_id}",
             expected_status=expected_status
         )
