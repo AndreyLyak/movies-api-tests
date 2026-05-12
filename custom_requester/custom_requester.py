@@ -7,11 +7,11 @@ class CustomRequester:
         self.session = session
         self.base_url = base_url
 
-    def send_request(self, method, endpoint, data=None, expected_status=200):
+    def send_request(self, method, endpoint, data=None, params=None, expected_status=200):
 
         url = f"{self.base_url}{endpoint}"
 
-        response = self.session.request(method, url, json=data)
+        response = self.session.request(method, url, json=data, params=params)
 
         print(f"  {method} {url}")
         print(f" Данные: {json.dumps(data, ensure_ascii=False)[:200] if data else 'нет'}")

@@ -29,13 +29,10 @@ class MoviesAPI(CustomRequester):
 
     def get_movies(self, params=None, expected_status=200):
         """Получить список фильмов с фильтрацией"""
-        endpoint = self.movies_endpoint
-        if params:
-            query = "&".join([f"{k}={v}" for k, v in params.items()])
-            endpoint = f"{self.movies_endpoint}?{query}"
         return self.send_request(
             method="GET",
-            endpoint=endpoint,
+            endpoint=self.movies_endpoint,
+            params=params,
             expected_status=expected_status
         )
 
