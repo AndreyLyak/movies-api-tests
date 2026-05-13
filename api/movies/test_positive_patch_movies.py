@@ -1,23 +1,11 @@
-# Movies/tests/test_positive_patch_movies.py
-import uuid
-
-
-def test_update_movie(create_movie, update_movie, movie_payload):
+def test_update_movie(create_movie, update_movie, movie_payload, update_movie_data):
     # 1. CREATE фильм
     create_response = create_movie(movie_payload())
     assert create_response.status_code == 201
     movie_id = create_response.json()["id"]
 
-    # 2. UPDATE фильм - используем специальную фикстуру
-    update_data = {
-        "name": f"Updated Movie {uuid.uuid4()}",
-        "description": "Updated description",
-        "price": 200,
-        "location": "MSK",
-        "imageUrl": "https://new-image.url",
-        "published": False
-    }
-
+    # 2. UPDATE фильм - используем фикстуру для данных
+    update_data = update_movie_data()
     update_response = update_movie(movie_id, **update_data)
     assert update_response.status_code == 200
 
@@ -32,4 +20,4 @@ def test_update_movie(create_movie, update_movie, movie_payload):
     assert data["imageUrl"] == update_data["imageUrl"]
     assert data["published"] == update_data["published"]
     # genreId должен остаться неизменным
-    assert data["genreId"] == 1  # значение из movie_payload по умолчанию
+    assert data["genreId"] == 1
