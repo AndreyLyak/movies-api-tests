@@ -2,7 +2,7 @@ import pytest
 import requests
 import uuid
 from auth import get_auth_token
-from api.api_manager import ApiManager
+from tests.api.api_manager import ApiManager
 import logging
 
 # Настройка логирования
@@ -208,7 +208,6 @@ def update_movie_data(movie_payload):
             published=False
         )
         default_data.update(kwargs)
-        # Убираем поля, которые нельзя обновлять
         default_data.pop("id", None)
         return default_data
     return _update_movie_data

@@ -1,17 +1,25 @@
-def test_update_movie(create_movie, update_movie, movie_payload, update_movie_data):
-    # 1. CREATE фильм
+import uuid
+def test_update_movie(create_movie, update_movie, movie_payload):
     create_response = create_movie(movie_payload())
     assert create_response.status_code == 201
     movie_id = create_response.json()["id"]
 
-    # 2. UPDATE фильм - используем фикстуру для данных
-    update_data = update_movie_data()
+
+    update_data = movie_payload(
+        name=f"Updated Movie {uuid.uuid4()}",
+        description="Updated description",
+        price=200,
+        location="MSK",
+        imageUrl="https://new-image.url",
+        published=False
+    )
+    # Убираем id, если он появился
+    update_data.pop("id", None)
+
     update_response = update_movie(movie_id, **update_data)
     assert update_response.status_code == 200
 
     data = update_response.json()
-
-    # 3. ПРОВЕРКИ
     assert data["id"] == movie_id
     assert data["name"] == update_data["name"]
     assert data["description"] == update_data["description"]
@@ -19,5 +27,4 @@ def test_update_movie(create_movie, update_movie, movie_payload, update_movie_da
     assert data["location"] == update_data["location"]
     assert data["imageUrl"] == update_data["imageUrl"]
     assert data["published"] == update_data["published"]
-    # genreId должен остаться неизменным
     assert data["genreId"] == 1
