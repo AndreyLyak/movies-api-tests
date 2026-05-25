@@ -1,48 +1,26 @@
-import requests
-import uuid
-
-from constants import BASE_URL, MOVIES_ENDPOINT
-
-
-def test_show_review(create_movie, auth_token, movie_payload):
+#test_show_review_positive.py
+def test_show_review(api_manager, movie_payload):
     # 1. создаем фильм
-    movie_resp = create_movie(movie_payload())
-
-    assert movie_resp.status_code in [200, 201], movie_resp.text
+    movie_resp = api_manager.movies_api.create_movie(movie_payload())
+    assert movie_resp.status_code in [200, 201]
     movie_id = movie_resp.json()["id"]
 
-    headers = {"Authorization": f"Bearer {auth_token}"}
-
     # 2. создаем отзыв
-    review_resp = requests.post(
-        f"{BASE_URL}{MOVIES_ENDPOINT}/{movie_id}/reviews",
-        json={
-            "rating": 5,
-            "text": f"Test review {uuid.uuid4()}"
-        },
-        headers=headers
-    )
-
-    assert review_resp.status_code in [200, 201], review_resp.text
+    review_resp = api_manager.reviews_api.create_review(movie_id, rating=5)
+    assert review_resp.status_code in [200, 201]
 
     review_data = review_resp.json()
+    if isinstance(review_data, list):
+        review_data = review_data[0]
     user_id = review_data["userId"]
 
     # 3. скрываем отзыв
-    hide_resp = requests.patch(
-        f"{BASE_URL}{MOVIES_ENDPOINT}/{movie_id}/reviews/hide/{user_id}",
-        headers=headers
-    )
-
-    assert hide_resp.status_code == 200, hide_resp.text
+    hide_resp = api_manager.reviews_api.hide_review(movie_id, user_id)
+    assert hide_resp.status_code == 200
 
     # 4. показываем отзыв обратно
-    show_resp = requests.patch(
-        f"{BASE_URL}{MOVIES_ENDPOINT}/{movie_id}/reviews/show/{user_id}",
-        headers=headers
-    )
-
-    assert show_resp.status_code == 200, show_resp.text
+    show_resp = api_manager.reviews_api.show_review(movie_id, user_id)
+    assert show_resp.status_code == 200
 
     data = show_resp.json()
 

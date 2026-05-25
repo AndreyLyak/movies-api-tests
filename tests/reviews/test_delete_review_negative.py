@@ -1,56 +1,71 @@
-# test_delete_review_negative.py (супер-чистая версия)
 import requests
 from constants import BASE_URL, MOVIES_ENDPOINT
 
 
-def test_delete_review_no_auth(create_movie_with_review):
+def test_delete_review_no_auth(api_manager, movie_payload):
     """Попытка удалить отзыв без авторизации"""
-    data = create_movie_with_review()
+    # создаем фильм с отзывом
+    create_response = api_manager.movies_api.create_movie(movie_payload())
+    assert create_response.status_code == 201
+    movie_id = create_response.json()["id"]
+
+    review_response = api_manager.reviews_api.create_review(movie_id, rating=5)
+    assert review_response.status_code == 201
 
     resp = requests.delete(
-        f"{BASE_URL}{MOVIES_ENDPOINT}/{data['movie_id']}/reviews"
+        f"{BASE_URL}{MOVIES_ENDPOINT}/{movie_id}/reviews"
     )
     assert resp.status_code in [401, 403]
 
 
-def test_delete_review_not_found(api_client):
+def test_delete_review_not_found(api_manager):
     """Попытка удалить отзыв у несуществующего фильма"""
-    resp = api_client.delete(f"{MOVIES_ENDPOINT}/999999/reviews")
+    resp = api_manager.reviews_api.delete_review(999999)
     assert resp.status_code == 404
 
 
-def test_delete_review_without_existing_review(create_movie, api_client, movie_payload):
+def test_delete_review_without_existing_review(api_manager, movie_payload):
     """Попытка удалить отзыв, которого не существует"""
-    movie_resp = create_movie(movie_payload())
+    movie_resp = api_manager.movies_api.create_movie(movie_payload())
     movie_id = movie_resp.json()["id"]
 
-    resp = api_client.delete(f"{MOVIES_ENDPOINT}/{movie_id}/reviews")
+    resp = api_manager.reviews_api.delete_review(movie_id)
     assert resp.status_code == 404
 
 
-def test_delete_review_invalid_movie_id(api_client):
+def test_delete_review_invalid_movie_id(api_manager):
     """Попытка удалить отзыв с невалидным movie_id"""
-    resp = api_client.delete(f"{MOVIES_ENDPOINT}/abc/reviews")
+    resp = api_manager.reviews_api.delete_review("abc")
     assert resp.status_code in [400, 404]
 
 
-def test_delete_review_double_delete(create_movie_with_review, delete_review):
+def test_delete_review_double_delete(api_manager, movie_payload):
     """Попытка удалить отзыв дважды"""
-    data = create_movie_with_review()
+    # создаем фильм с отзывом
+    create_response = api_manager.movies_api.create_movie(movie_payload())
+    assert create_response.status_code == 201
+    movie_id = create_response.json()["id"]
+
+    review_response = api_manager.reviews_api.create_review(movie_id, rating=5)
+    assert review_response.status_code == 201
+
+    review_data = review_response.json()
+    if isinstance(review_data, list):
+        review_data = review_data[0]
+    user_id = review_data.get("userId")
 
     # удаляем первый раз
-    assert delete_review(data["movie_id"], data["user_id"]).status_code == 200
+    assert api_manager.reviews_api.delete_review(movie_id, user_id).status_code == 200
 
     # удаляем второй раз
-    assert delete_review(data["movie_id"], data["user_id"]).status_code == 404
+    assert api_manager.reviews_api.delete_review(movie_id, user_id).status_code == 404
 
 
-def test_delete_review_invalid_user_id(create_movie_with_review, api_client):
+def test_delete_review_invalid_user_id(api_manager, movie_payload):
     """Попытка удалить отзыв с невалидным user_id"""
-    data = create_movie_with_review()
+    create_response = api_manager.movies_api.create_movie(movie_payload())
+    assert create_response.status_code == 201
+    movie_id = create_response.json()["id"]
 
-    resp = api_client.delete(
-        f"{MOVIES_ENDPOINT}/{data['movie_id']}/reviews",
-        params={"userId": "invalid-id"}
-    )
+    resp = api_manager.reviews_api.delete_review(movie_id, user_id="invalid-id")
     assert resp.status_code in [400, 404]

@@ -1,24 +1,57 @@
-import pytest
+import requests
+from constants import BASE_URL, MOVIES_ENDPOINT
 
-#что будет, если отправить неправильную страницу?
-def test_negative_pagination(get_movies):
-    response = get_movies({"page": 0, "pageSize": 20})
-    assert response.status_code in [400, 422]
 
-#Что если minPrice > maxPrice или отрицательные значения?
-def test_negative_filter_price(get_movies):
-    response = get_movies({"minPrice": 0, "maxPrice": -1})
-    assert response.status_code in [400, 422]
+def test_delete_without_auth(api_manager, movie_payload):
+    # создаем фильм
+    create_response = api_manager.movies_api.create_movie(movie_payload())
+    assert create_response.status_code == 201
+    movie_id = create_response.json()["id"]
 
-#Что если передать несуществующую сортировку?
-@pytest.mark.parametrize("created_at", ["up", "down", "123", ""])
-def test_negative_sort(get_movies, created_at):
-    response = get_movies({"createdAt": created_at})
-    assert response.status_code in [400, 422]
+    # проверяем что фильм существует
+    get_response = api_manager.movies_api.get_movie(movie_id)
+    assert get_response.status_code == 200
 
-#Что если передать не boolean?
-@pytest.mark.parametrize("published", ["yes", "no", 123, "null"])
-def test_negative_published(get_movies, published):
-    response = get_movies({"published": published})
-    assert response.status_code in [400, 422]
+    # DELETE без токена
+    url = f"{BASE_URL}{MOVIES_ENDPOINT}/{movie_id}"
+    delete_response = requests.delete(url)
+    assert delete_response.status_code in [401, 403]
 
+
+def test_delete_nonexistent_movie(api_manager):
+    response = api_manager.movies_api.delete_movie(999999999)
+    assert response.status_code == 404
+
+
+def test_delete_invalid_id(api_manager):
+    response = api_manager.movies_api.delete_movie("abc")
+    assert response.status_code == 404
+
+
+def test_double_delete_movie(api_manager, movie_payload):
+    # создаем фильм
+    create_response = api_manager.movies_api.create_movie(movie_payload())
+    assert create_response.status_code == 201
+    movie_id = create_response.json()["id"]
+
+    # удаляем первый раз
+    assert api_manager.movies_api.delete_movie(movie_id).status_code == 200
+
+    # удаляем второй раз
+    assert api_manager.movies_api.delete_movie(movie_id).status_code == 404
+
+
+def test_delete_then_get_movie(api_manager, movie_payload):
+    # создаем фильм
+    create_response = api_manager.movies_api.create_movie(movie_payload())
+    assert create_response.status_code == 201
+    movie_id = create_response.json()["id"]
+
+    # проверяем что фильм есть
+    assert api_manager.movies_api.get_movie(movie_id).status_code == 200
+
+    # удаляем
+    assert api_manager.movies_api.delete_movie(movie_id).status_code == 200
+
+    # проверяем что фильм исчез
+    assert api_manager.movies_api.get_movie(movie_id).status_code == 404

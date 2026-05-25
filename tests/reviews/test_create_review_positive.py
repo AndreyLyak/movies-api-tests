@@ -1,19 +1,28 @@
-# test_create_review_positive.py
+def test_update_review(api_manager, movie_payload):
+    # 1. создаем фильм
+    create_response = api_manager.movies_api.create_movie(movie_payload())
+    assert create_response.status_code == 201
+    movie_id = create_response.json()["id"]
 
-def test_update_review(create_movie_with_review, update_review):
-    # 1. создаем фильм с отзывом
-    data = create_movie_with_review()
+    # 2. создаем отзыв
+    review_response = api_manager.reviews_api.create_review(movie_id, rating=5)
+    assert review_response.status_code == 201
 
-    # 2. обновляем отзыв
+    review_data = review_response.json()
+    if isinstance(review_data, list):
+        review_data = review_data[0]
+    user_id = review_data.get("userId")
+
+    # 3. обновляем отзыв
     update_payload = {
         "rating": 4,
-        "text": f"updated text"
+        "text": "updated text"
     }
 
-    update_resp = update_review(data["movie_id"], **update_payload)
+    update_resp = api_manager.reviews_api.update_review(movie_id, rating=4, text="updated text")
     assert update_resp.status_code == 200
 
-    # 3. проверяем результат
+    # 4. проверяем результат
     result = update_resp.json()
 
     # API может вернуть объект или список
@@ -27,6 +36,6 @@ def test_update_review(create_movie_with_review, update_review):
             assert review.get("rating") == update_payload["rating"]
             assert "createdAt" in review
             assert "movieId" in review
-            assert review.get("userId") == data["user_id"]
+            assert review.get("userId") == user_id
 
     assert found, f"Updated review not found in response: {result}"

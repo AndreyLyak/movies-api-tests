@@ -1,9 +1,10 @@
 import uuid
-def test_update_movie(create_movie, update_movie, movie_payload):
-    create_response = create_movie(movie_payload())
+
+
+def test_update_movie(api_manager, movie_payload):
+    create_response = api_manager.movies_api.create_movie(movie_payload())
     assert create_response.status_code == 201
     movie_id = create_response.json()["id"]
-
 
     update_data = movie_payload(
         name=f"Updated Movie {uuid.uuid4()}",
@@ -16,7 +17,7 @@ def test_update_movie(create_movie, update_movie, movie_payload):
     # Убираем id, если он появился
     update_data.pop("id", None)
 
-    update_response = update_movie(movie_id, **update_data)
+    update_response = api_manager.movies_api.update_movie(movie_id, update_data)
     assert update_response.status_code == 200
 
     data = update_response.json()
