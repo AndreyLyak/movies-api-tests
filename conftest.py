@@ -45,7 +45,7 @@ def movie_payload():
             "name": f"Test movie {uuid.uuid4()}",
             "imageUrl": "https://img.com",
             "price": 100,
-            "description": "Test",
+            "description": "Test description",
             "location": "SPB",
             "published": True,
             "genreId": 1

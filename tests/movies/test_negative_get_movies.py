@@ -1,57 +1,48 @@
-import requests
-from constants import BASE_URL, MOVIES_ENDPOINT
+import pytest
 
 
-def test_delete_without_auth(api_manager, movie_payload):
-    # создаем фильм
-    create_response = api_manager.movies_api.create_movie(movie_payload())
-    assert create_response.status_code == 201
-    movie_id = create_response.json()["id"]
+def test_negative_pagination(api_manager):
+    """Что будет, если отправить неправильную страницу? Ожидаем 400"""
+    response = api_manager.movies_api.get_movies(
+        params={"page": 0, "pageSize": 20},
+        expected_status=400  # ← API возвращает 400
+    )
 
-    # проверяем что фильм существует
-    get_response = api_manager.movies_api.get_movie(movie_id)
-    assert get_response.status_code == 200
-
-    # DELETE без токена
-    url = f"{BASE_URL}{MOVIES_ENDPOINT}/{movie_id}"
-    delete_response = requests.delete(url)
-    assert delete_response.status_code in [401, 403]
+    data = response.json()
+    assert "message" in data
+    assert "Поле page имеет минимальную величину 1" in data["message"][0]
 
 
-def test_delete_nonexistent_movie(api_manager):
-    response = api_manager.movies_api.delete_movie(999999999)
-    assert response.status_code == 404
+def test_negative_filter_price(api_manager):
+    """Что если minPrice > maxPrice? Ожидаем 400"""
+    response = api_manager.movies_api.get_movies(
+        params={"minPrice": 0, "maxPrice": -1},
+        expected_status=400
+    )
+    assert response.status_code == 400
+    data = response.json()
+    assert "message" in data
 
 
-def test_delete_invalid_id(api_manager):
-    response = api_manager.movies_api.delete_movie("abc")
-    assert response.status_code == 404
+@pytest.mark.parametrize("created_at", ["up", "down", "123", ""])
+def test_negative_sort(api_manager, created_at):
+    """Что если передать несуществующую сортировку? Ожидаем 400"""
+    response = api_manager.movies_api.get_movies(
+        params={"createdAt": created_at},
+        expected_status=400
+    )
+    assert response.status_code == 400
+    data = response.json()
+    assert "message" in data
 
 
-def test_double_delete_movie(api_manager, movie_payload):
-    # создаем фильм
-    create_response = api_manager.movies_api.create_movie(movie_payload())
-    assert create_response.status_code == 201
-    movie_id = create_response.json()["id"]
-
-    # удаляем первый раз
-    assert api_manager.movies_api.delete_movie(movie_id).status_code == 200
-
-    # удаляем второй раз
-    assert api_manager.movies_api.delete_movie(movie_id).status_code == 404
-
-
-def test_delete_then_get_movie(api_manager, movie_payload):
-    # создаем фильм
-    create_response = api_manager.movies_api.create_movie(movie_payload())
-    assert create_response.status_code == 201
-    movie_id = create_response.json()["id"]
-
-    # проверяем что фильм есть
-    assert api_manager.movies_api.get_movie(movie_id).status_code == 200
-
-    # удаляем
-    assert api_manager.movies_api.delete_movie(movie_id).status_code == 200
-
-    # проверяем что фильм исчез
-    assert api_manager.movies_api.get_movie(movie_id).status_code == 404
+@pytest.mark.parametrize("published", ["yes", "no", 123, "null"])
+def test_negative_published(api_manager, published):
+    """Что если передать не boolean? Ожидаем 400"""
+    response = api_manager.movies_api.get_movies(
+        params={"published": published},
+        expected_status=400
+    )
+    assert response.status_code == 400
+    data = response.json()
+    assert "message" in data

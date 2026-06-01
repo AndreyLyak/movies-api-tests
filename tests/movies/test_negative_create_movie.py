@@ -16,11 +16,11 @@ def test_create_movie_duplicate(api_manager, movie_payload):
     fixed_name = "Test Movie Duplicate"
     payload = movie_payload(name=fixed_name)
 
-    response1 = api_manager.movies_api.create_movie(payload)
-    assert response1.status_code in [201, 409]
+    first_response = api_manager.movies_api.create_movie(payload)
+    assert first_response.status_code in [201, 409]
 
-    response2 = api_manager.movies_api.create_movie(payload)
-    assert response2.status_code == 409
+    second_response = api_manager.movies_api.create_movie(payload)
+    assert second_response.status_code == 409
 
 
 def test_create_movie_empty_name(api_manager, movie_payload):
