@@ -1,39 +1,97 @@
-# test_negative_get_reviews.py
+# обновленный tests/reviews/test_negative_get_reviews.py
+import pytest
+import allure
 import requests
 from constants import BASE_URL, MOVIES_ENDPOINT
 
 
-# 1. Несуществующий фильм
+@allure.epic("Reviews")
+@allure.feature("Получение отзывов")
+@allure.story("Негативные сценарии - несуществующий фильм")
+@allure.severity(allure.severity_level.NORMAL)
+@pytest.mark.regression
+@pytest.mark.api
+@pytest.mark.review
 def test_get_reviews_nonexistent_movie(api_manager):
-    response = api_manager.reviews_api.get_reviews(99999999)
-    assert response.status_code in [400, 404, 500]
+    """Попытка получить отзывы для несуществующего фильма"""
+
+    with allure.step("GET запрос с несуществующим movie_id 99999999"):
+        response = api_manager.reviews_api.get_reviews(99999999, expected_status=404)
+
+    with allure.step("Проверка статус-кода 404"):
+        assert response.status_code == 404, f"Ожидался 404, получен {response.status_code}"
+        allure.attach(str(response.text), name="Response", attachment_type=allure.attachment_type.TEXT)
 
 
-# 2. Невалидный movieId (строка)
+@allure.epic("Reviews")
+@allure.feature("Получение отзывов")
+@allure.story("Негативные сценарии - невалидный ID")
+@allure.severity(allure.severity_level.NORMAL)
+@pytest.mark.regression
+@pytest.mark.api
+@pytest.mark.review
 def test_get_reviews_invalid_id(api_manager):
-    response = api_manager.reviews_api.get_reviews("abc")
-    assert response.status_code in [400, 404, 500]
+    """Попытка получить отзывы с невалидным movie_id (строка)"""
+
+    with allure.step("GET запрос с невалидным movie_id 'abc'"):
+        response = api_manager.reviews_api.get_reviews("abc", expected_status=500)
+
+    with allure.step("Проверка статус-кода 500"):
+        assert response.status_code == 500, f"Ожидался 500, получен {response.status_code}"
+        allure.attach(str(response.text), name="Response", attachment_type=allure.attachment_type.TEXT)
 
 
-# 3. Пустой movieId (сломанный URL)
+@allure.epic("Reviews")
+@allure.feature("Получение отзывов")
+@allure.story("Негативные сценарии - некорректный URL")
+@allure.severity(allure.severity_level.NORMAL)
+@pytest.mark.regression
+@pytest.mark.api
+@pytest.mark.review
 def test_get_reviews_empty_id():
-    # Для сломанного URL используем прямой запрос, т.к. api_manager может нормализовать URL
-    url = f"{BASE_URL}{MOVIES_ENDPOINT}//reviews"
-    response = requests.get(url)
-    assert response.status_code in [400, 404, 500]
+    """Попытка получить отзывы с пустым movie_id (сломанный URL)"""
+
+    with allure.step("GET запрос с некорректным URL (двойной слеш)"):
+        url = f"{BASE_URL}{MOVIES_ENDPOINT}//reviews"
+        response = requests.get(url)
+        allure.attach(str(response.text), name="Response", attachment_type=allure.attachment_type.TEXT)
+
+    with allure.step("Проверка статус-кода (400, 404 или 500)"):
+        assert response.status_code in [400, 404, 500], f"Ожидался 400, 404 или 500, получен {response.status_code}"
 
 
-# 4. Очень большой movieId
+@allure.epic("Reviews")
+@allure.feature("Получение отзывов")
+@allure.story("Негативные сценарии - несуществующий фильм")
+@allure.severity(allure.severity_level.NORMAL)
+@pytest.mark.regression
+@pytest.mark.api
+@pytest.mark.review
 def test_get_reviews_large_id(api_manager):
-    response = api_manager.reviews_api.get_reviews(999999999999)
-    assert response.status_code in [400, 404, 500]
+    """Попытка получить отзывы с очень большим movie_id"""
+
+    with allure.step("GET запрос с очень большим movie_id 999999999999"):
+        response = api_manager.reviews_api.get_reviews(999999999999, expected_status=500)
+
+    with allure.step("Проверка статус-кода 500"):
+        assert response.status_code == 500, f"Ожидался 500, получен {response.status_code}"
+        allure.attach(str(response.text), name="Response", attachment_type=allure.attachment_type.TEXT)
 
 
-# 5. Негатив на метод (POST вместо GET)
+@allure.epic("Reviews")
+@allure.feature("Получение отзывов")
+@allure.story("Негативные сценарии - неверный метод")
+@allure.severity(allure.severity_level.NORMAL)
+@pytest.mark.regression
+@pytest.mark.api
+@pytest.mark.review
 def test_get_reviews_wrong_method(api_manager):
-    # POST вместо GET — используем прямой запрос или api_manager.post
-    # Так как у reviews_api нет метода post для этого эндпоинта, используем прямой запрос
-    import requests
-    url = f"{BASE_URL}{MOVIES_ENDPOINT}/1/reviews"
-    response = requests.post(url, headers=api_manager.session.headers)
-    assert response.status_code in [400, 404, 405]
+    """Попытка получить отзывы с использованием POST вместо GET"""
+
+    with allure.step("POST запрос вместо GET"):
+        url = f"{BASE_URL}{MOVIES_ENDPOINT}/1/reviews"
+        response = requests.post(url, headers=api_manager.session.headers)
+        allure.attach(str(response.text), name="Response", attachment_type=allure.attachment_type.TEXT)
+
+    with allure.step("Проверка статус-кода (400, 404 или 405)"):
+        assert response.status_code in [400, 404, 405], f"Ожидался 400, 404 или 405, получен {response.status_code}"

@@ -1,0 +1,4 @@
+2026-06-22 19:15:58,609 - custom_requester.custom_requester - INFO - ➡️  POST https://auth.dev-cinescope.coconutqa.ru/login
+2026-06-22 19:15:59,258 - custom_requester.custom_requester - INFO - ⬅️  Статус: 201
+2026-06-22 19:15:59,259 - custom_requester.custom_requester - ERROR - ❌ Ожидался статус 200, получили 201
+2026-06-22 19:15:59,259 - custom_requester.custom_requester - ERROR - Ответ: {"user":{"id":"734964ec-4d6a-4789-839f-75797141e73e","email":"api1@gmail.com","fullName":"Жмышенко Валерий Альбертович","roles":["USER","ADMIN","SUPER_ADMIN"]},"accessToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjczNDk2NGVjLTRkNmEtNDc4OS04MzlmLTc1Nzk3MTQxZTczZSIsImVtYWlsIjoiYXBpMUBnbWFpbC5jb20iLCJyb2xlcyI6WyJVU0VSIiwiQURNSU4iLCJTVVBFUl9BRE1JTiJdLCJ2ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxNzgyMTQ0OTU5LCJleHAiOjE3ODIxNDY3NTl9.rJl9vFG9xjRIiDvkZfui9R9rnwNKjC-W--W39I4yAF0","refreshToken":"d2f757e2-cb5c-

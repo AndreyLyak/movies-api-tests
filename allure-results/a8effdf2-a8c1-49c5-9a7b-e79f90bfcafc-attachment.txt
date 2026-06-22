@@ -1,0 +1,4 @@
+[32mINFO    [0m custom_requester.custom_requester:custom_requester.py:17 ➡️  POST https://auth.dev-cinescope.coconutqa.ru/login
+[32mINFO    [0m custom_requester.custom_requester:custom_requester.py:23 ⬅️  Статус: 201
+[1m[31mERROR   [0m custom_requester.custom_requester:custom_requester.py:26 ❌ Ожидался статус 200, получили 201
+[1m[31mERROR   [0m custom_requester.custom_requester:custom_requester.py:27 Ответ: {"user":{"id":"734964ec-4d6a-4789-839f-75797141e73e","email":"api1@gmail.com","fullName":"Жмышенко Валерий Альбертович","roles":["USER","ADMIN","SUPER_ADMIN"]},"accessToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjczNDk2NGVjLTRkNmEtNDc4OS04MzlmLTc1Nzk3MTQxZTczZSIsImVtYWlsIjoiYXBpMUBnbWFpbC5jb20iLCJyb2xlcyI6WyJVU0VSIiwiQURNSU4iLCJTVVBFUl9BRE1JTiJdLCJ2ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxNzgyMTQ0OTU4LCJleHAiOjE3ODIxNDY3NTh9.DCObVfvKNuSxDeDKAFQBxufHvc8t4oOpR25cuAh7IlM","refreshToken":"0f483862-ebae-
