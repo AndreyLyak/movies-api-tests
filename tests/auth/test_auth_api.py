@@ -2,6 +2,7 @@
 import allure
 from pytest_check import check
 from models.user_model import RegisterUserResponse
+from models.error_model import ErrorResponse
 from enums.roles import Roles
 
 
@@ -79,7 +80,7 @@ class TestAuthAPI:
             assert response.status_code == 400, f"Ожидался статус 400, получен {response.status_code}"
 
         with allure.step("Проверка сообщения об ошибке"):
-            # Обычно в ответе приходит детализация ошибок
-            error_data = response.json()
-            assert "detail" in error_data or "message" in error_data, "Ответ должен содержать информацию об ошибке"
-            print(f"✅ Ошибка валидации: {error_data}")
+            error_data = ErrorResponse(**response.json())
+            assert error_data.detail or error_data.message, "Ответ должен содержать информацию об ошибке"
+            allure.attach(str(error_data.model_dump()), name="Error Response", attachment_type=allure.attachment_type.JSON)
+            print(f"✅ Ошибка валидации: {error_data.model_dump()}")
