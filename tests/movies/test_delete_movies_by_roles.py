@@ -7,12 +7,11 @@ from constants import BASE_URL, MOVIES_ENDPOINT
 from db_requester.movies import MovieDBModel
 from db_requester.db_client import SessionLocal
 
-# Настройка логгера для этого модуля
 logger = logging.getLogger(__name__)
 
 
-def ensure_movie_exists_in_db(movie_id: int):
-    """Проверяет, существует ли фильм в БД. Если нет — создает."""
+def get_or_create_movie_in_db(movie_id: int):
+    """Получает фильм из БД или создаёт его, если он не существует."""
     session = SessionLocal()
     try:
         movie = session.query(MovieDBModel).filter_by(id=movie_id).first()
@@ -60,7 +59,7 @@ def test_delete_movie_by_super_admin(api_manager, movie_payload, super_admin):
         allure.attach(str(movie_id), name="Movie ID", attachment_type=allure.attachment_type.TEXT)
 
     with allure.step("Убеждаемся, что фильм есть в БД"):
-        ensure_movie_exists_in_db(movie_id)
+        get_or_create_movie_in_db(movie_id)
 
     with allure.step("Удаление фильма через API супер-админом"):
         delete_resp = super_admin.api.movies_api.delete_movie(movie_id)
@@ -85,7 +84,7 @@ def test_delete_movie_by_admin(api_manager, movie_payload, super_admin, admin_us
         movie_id = create_resp.json()["id"]
 
     with allure.step("Убеждаемся, что фильм есть в БД"):
-        ensure_movie_exists_in_db(movie_id)
+        get_or_create_movie_in_db(movie_id)
 
     with allure.step("Попытка удалить фильм админом (ожидаем 403)"):
         delete_resp = admin_user.api.movies_api.delete_movie(movie_id, expected_status=403)
@@ -109,7 +108,7 @@ def test_delete_movie_by_common_user(api_manager, movie_payload, super_admin, co
         movie_id = create_resp.json()["id"]
 
     with allure.step("Убеждаемся, что фильм есть в БД"):
-        ensure_movie_exists_in_db(movie_id)
+        get_or_create_movie_in_db(movie_id)
 
     with allure.step("Попытка удалить фильм обычным пользователем (ожидаем 403)"):
         delete_resp = common_user.api.movies_api.delete_movie(movie_id, expected_status=403)
@@ -133,7 +132,7 @@ def test_delete_movie_unauthorized(movie_payload, super_admin):
         movie_id = create_resp.json()["id"]
 
     with allure.step("Убеждаемся, что фильм есть в БД"):
-        ensure_movie_exists_in_db(movie_id)
+        get_or_create_movie_in_db(movie_id)
 
     with allure.step("Попытка удалить фильм без авторизации (ожидаем 401)"):
         url = f"{BASE_URL}{MOVIES_ENDPOINT}/{movie_id}"
