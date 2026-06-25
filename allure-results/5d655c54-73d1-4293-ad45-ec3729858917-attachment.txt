@@ -1,0 +1,6 @@
+[32mINFO    [0m custom_requester.custom_requester:custom_requester.py:17 ➡️  POST https://api.dev-cinescope.coconutqa.ru/movies
+[32mINFO    [0m custom_requester.custom_requester:custom_requester.py:23 ⬅️  Статус: 201
+[32mINFO    [0m custom_requester.custom_requester:custom_requester.py:17 ➡️  GET https://api.dev-cinescope.coconutqa.ru/movies/57510
+[32mINFO    [0m custom_requester.custom_requester:custom_requester.py:23 ⬅️  Статус: 200
+[32mINFO    [0m custom_requester.custom_requester:custom_requester.py:17 ➡️  DELETE https://api.dev-cinescope.coconutqa.ru/movies/57510
+[32mINFO    [0m custom_requester.custom_requester:custom_requester.py:23 ⬅️  Статус: 200

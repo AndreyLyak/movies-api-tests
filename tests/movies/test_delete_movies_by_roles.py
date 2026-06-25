@@ -1,10 +1,14 @@
-# с аллюр и марками tests/movies/test_delete_movies_by_roles.py
+# tests/movies/test_delete_movies_by_roles.py
 import pytest
 import allure
 import requests
+import logging
 from constants import BASE_URL, MOVIES_ENDPOINT
 from db_requester.movies import MovieDBModel
 from db_requester.db_client import SessionLocal
+
+# Настройка логгера для этого модуля
+logger = logging.getLogger(__name__)
 
 
 def ensure_movie_exists_in_db(movie_id: int):
@@ -13,7 +17,7 @@ def ensure_movie_exists_in_db(movie_id: int):
     try:
         movie = session.query(MovieDBModel).filter_by(id=movie_id).first()
         if movie is None:
-            print(f"⚠️ Фильм с ID {movie_id} не найден в БД. Создаем...")
+            logger.warning(f"Фильм с ID {movie_id} не найден в БД. Создаем...")
             from datetime import datetime
             new_movie = MovieDBModel(
                 id=movie_id,
@@ -30,10 +34,13 @@ def ensure_movie_exists_in_db(movie_id: int):
             session.add(new_movie)
             session.commit()
             session.refresh(new_movie)
-            print(f"✅ Фильм с ID {movie_id} создан в БД")
+            logger.info(f"Фильм с ID {movie_id} создан в БД")
         else:
-            print(f"✅ Фильм с ID {movie_id} найден в БД")
+            logger.info(f"Фильм с ID {movie_id} найден в БД")
         return movie_id
+    except Exception as e:
+        logger.error(f"Ошибка при работе с БД: {e}")
+        raise
     finally:
         session.close()
 
