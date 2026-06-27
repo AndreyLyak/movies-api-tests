@@ -1,1 +1,0 @@
-{'id': 57510, 'name': 'Structure Test 6ab56284-1d88-46fa-9d8b-8ed8d17e66bb', 'price': 100, 'description': 'Test description', 'imageUrl': 'https://img.com', 'location': 'SPB', 'published': True, 'rating': 0, 'genreId': 1, 'createdAt': '2026-06-22T21:52:09.982Z', 'reviews': [], 'genre': {'name': 'Вичтоки'}}

@@ -1,4 +1,12 @@
 .venv/
 __pycache__/
 .idea/
--e "\n# Allure reports\nallure-report/\nallure-results/" 
+
+# Allure reports
+allure-report/
+allure-results/
+*.log
+*.txt
+*.json
+*.png
+*.html
