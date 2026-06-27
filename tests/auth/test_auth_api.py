@@ -83,4 +83,3 @@ class TestAuthAPI:
             error_data = ErrorResponse(**response.json())
             assert error_data.detail or error_data.message, "Ответ должен содержать информацию об ошибке"
             allure.attach(str(error_data.model_dump()), name="Error Response", attachment_type=allure.attachment_type.JSON)
-            print(f"✅ Ошибка валидации: {error_data.model_dump()}")
