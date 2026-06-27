@@ -1,7 +1,24 @@
-#обновленный tests/reviews/test_positive_create_review.py
+# tests/reviews/test_positive_create_review.py
 import pytest
 import allure
 import uuid
+from db_requester.db_client import SessionLocal
+from sqlalchemy import text
+
+
+def get_review_from_db(movie_id: int, user_id: str = None):
+    """Получает отзыв из БД по movie_id и user_id."""
+    session = SessionLocal()
+    try:
+        query = "SELECT * FROM reviews WHERE movie_id = :movie_id"
+        params = {"movie_id": movie_id}
+        if user_id:
+            query += " AND user_id = :user_id"
+            params["user_id"] = user_id
+        result = session.execute(text(query), params).fetchone()
+        return dict(result._mapping) if result else None
+    finally:
+        session.close()
 
 
 @allure.epic("Reviews")
@@ -49,20 +66,25 @@ def test_create_review(api_manager, movie_payload):
     with allure.step("Проверка структуры ответа"):
         assert isinstance(data, dict), "Ответ должен быть объектом"
 
-    with allure.step("Проверка данных отзыва"):
-        assert data["rating"] == review_data[
-            "rating"], f"Рейтинг не совпадает: ожидался {review_data['rating']}, получен {data['rating']}"
-        assert data["text"] == review_data[
-            "text"], f"Текст не совпадает: ожидался {review_data['text']}, получен {data['text']}"
+    with allure.step("Проверка данных отзыва в ответе API"):
+        assert data["rating"] == review_data["rating"], f"Рейтинг не совпадает: ожидался {review_data['rating']}, получен {data['rating']}"
+        assert data["text"] == review_data["text"], f"Текст не совпадает: ожидался {review_data['text']}, получен {data['text']}"
 
-    with allure.step("Проверка наличия обязательных полей"):
+    with allure.step("Проверка наличия обязательных полей в ответе API"):
         assert "userId" in data, "Поле 'userId' отсутствует"
         assert "createdAt" in data, "Поле 'createdAt' отсутствует"
         assert "user" in data, "Поле 'user' отсутствует"
         assert "fullName" in data["user"], "Поле 'fullName' отсутствует в объекте user"
-        allure.attach("Все обязательные поля присутствуют", name="Success", attachment_type=allure.attachment_type.TEXT)
+
+    with allure.step("Проверка, что отзыв появился в БД"):
+        user_id = data.get("userId")
+        review_from_db = get_review_from_db(movie_id, user_id)
+        assert review_from_db is not None, "Отзыв не найден в БД!"
+        assert review_from_db["rating"] == review_data["rating"], f"Рейтинг в БД не совпадает: {review_from_db['rating']} != {review_data['rating']}"
+        assert review_from_db["text"] == review_data["text"], f"Текст в БД не совпадает: {review_from_db['text']} != {review_data['text']}"
+        allure.attach("Отзыв успешно создан в БД", name="DB Check", attachment_type=allure.attachment_type.TEXT)
 
     with allure.step("Очистка: удаление фильма"):
         delete_resp = api_manager.movies_api.delete_movie(movie_id)
         assert delete_resp.status_code == 200, f"Ожидался 200, получен {delete_resp.status_code}"
-        print(f"✅ Фильм {movie_id} удален")
+        allure.attach(f"Фильм {movie_id} удален", name="Cleanup", attachment_type=allure.attachment_type.TEXT)

@@ -58,4 +58,4 @@ def test_hide_review(api_manager, movie_payload):
     with allure.step("Очистка: удаление фильма"):
         delete_resp = api_manager.movies_api.delete_movie(movie_id)
         assert delete_resp.status_code == 200, f"Ожидался 200, получен {delete_resp.status_code}"
-        print(f"✅ Фильм {movie_id} удален")
+        allure.attach(f"Фильм {movie_id} удален", name="Cleanup", attachment_type=allure.attachment_type.TEXT)

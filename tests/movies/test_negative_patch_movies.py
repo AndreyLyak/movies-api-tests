@@ -2,7 +2,17 @@
 import pytest
 import allure
 import requests
-from constants import BASE_URL, MOVIES_ENDPOINT
+from db_requester.db_client import SessionLocal
+from db_requester.movies import MovieDBModel
+
+
+def get_movie_from_db(movie_id: int):
+    """Получает фильм из БД по ID."""
+    session = SessionLocal()
+    try:
+        return session.query(MovieDBModel).filter_by(id=movie_id).first()
+    finally:
+        session.close()
 
 
 @allure.epic("Movies")
@@ -20,21 +30,34 @@ def test_patch_without_auth(api_manager, movie_payload):
         movie_id = response.json()["id"]
         allure.attach(str(movie_id), name="Movie ID", attachment_type=allure.attachment_type.TEXT)
 
+    with allure.step("Проверка, что фильм есть в БД"):
+        movie = get_movie_from_db(movie_id)
+        assert movie is not None, f"Фильм с ID {movie_id} не найден в БД!"
+        original_name = movie.name
+        allure.attach(original_name, name="Original Name", attachment_type=allure.attachment_type.TEXT)
+
     with allure.step("PATCH запрос без токена авторизации"):
-        url = f"{BASE_URL}{MOVIES_ENDPOINT}/{movie_id}"
-        patch_response = requests.patch(
-            url,
-            json={"name": "Updated without auth"}
+        session_without_auth = requests.Session()
+        from clients.movies_client import MoviesAPI
+        movies_api_without_auth = MoviesAPI(session_without_auth)
+        patch_response = movies_api_without_auth.update_movie(
+            movie_id,
+            {"name": "Updated without auth"},
+            expected_status=401  # Однозначно 401, так как токена нет
         )
 
-    with allure.step("Проверка статус-кода 401 или 403"):
-        assert patch_response.status_code in [401, 403], f"Ожидался 401 или 403, получен {patch_response.status_code}"
-        allure.attach(str(patch_response.text), name="Response", attachment_type=allure.attachment_type.TEXT)
+    with allure.step("Проверка статус-кода 401"):
+        assert patch_response.status_code == 401, f"Ожидался 401, получен {patch_response.status_code}"
+
+    with allure.step("Проверка, что фильм НЕ изменился в БД"):
+        movie_after = get_movie_from_db(movie_id)
+        assert movie_after is not None, f"Фильм с ID {movie_id} исчез из БД!"
+        assert movie_after.name == original_name, f"Имя фильма изменилось: {original_name} -> {movie_after.name}"
 
     with allure.step("Очистка: удаление фильма через API"):
         delete_resp = api_manager.movies_api.delete_movie(movie_id)
         assert delete_resp.status_code == 200
-        print(f"✅ Фильм {movie_id} удален")
+        allure.attach(f"Фильм {movie_id} удален", name="Cleanup", attachment_type=allure.attachment_type.TEXT)
 
 
 @allure.epic("Movies")
@@ -90,6 +113,12 @@ def test_patch_invalid_data(api_manager, movie_payload):
         movie_id = create_response.json()["id"]
         allure.attach(str(movie_id), name="Movie ID", attachment_type=allure.attachment_type.TEXT)
 
+    with allure.step("Проверка, что фильм есть в БД"):
+        movie = get_movie_from_db(movie_id)
+        assert movie is not None, f"Фильм с ID {movie_id} не найден в БД!"
+        original_price = movie.price
+        allure.attach(str(original_price), name="Original Price", attachment_type=allure.attachment_type.TEXT)
+
     with allure.step("PATCH запрос с отрицательной ценой (ожидаем 400)"):
         response = api_manager.movies_api.update_movie(movie_id, {"price": -100}, expected_status=400)
 
@@ -97,15 +126,15 @@ def test_patch_invalid_data(api_manager, movie_payload):
         assert response.status_code == 400, f"Ожидался 400, получен {response.status_code}"
         allure.attach(str(response.json()), name="Response", attachment_type=allure.attachment_type.JSON)
 
-    with allure.step("Проверка сообщения об ошибке"):
-        data = response.json()
-        assert "message" in data, "Ответ должен содержать сообщение об ошибке"
-        allure.attach(str(data), name="Error Response", attachment_type=allure.attachment_type.JSON)
+    with allure.step("Проверка, что цена НЕ изменилась в БД"):
+        movie_after = get_movie_from_db(movie_id)
+        assert movie_after is not None, f"Фильм с ID {movie_id} исчез из БД!"
+        assert movie_after.price == original_price, f"Цена изменилась: {original_price} -> {movie_after.price}"
 
     with allure.step("Очистка: удаление фильма через API"):
         delete_resp = api_manager.movies_api.delete_movie(movie_id)
         assert delete_resp.status_code == 200
-        print(f"✅ Фильм {movie_id} удален")
+        allure.attach(f"Фильм {movie_id} удален", name="Cleanup", attachment_type=allure.attachment_type.TEXT)
 
 
 @allure.epic("Movies")
@@ -123,15 +152,26 @@ def test_patch_empty_body(api_manager, movie_payload):
         movie_id = create_response.json()["id"]
         allure.attach(str(movie_id), name="Movie ID", attachment_type=allure.attachment_type.TEXT)
 
+    with allure.step("Проверка, что фильм есть в БД"):
+        movie = get_movie_from_db(movie_id)
+        assert movie is not None, f"Фильм с ID {movie_id} не найден в БД!"
+        original_name = movie.name
+        allure.attach(original_name, name="Original Name", attachment_type=allure.attachment_type.TEXT)
+
     with allure.step("PATCH запрос с пустым телом"):
         response = api_manager.movies_api.update_movie(movie_id, {})
 
     with allure.step("Проверка статус-кода (200 или 400)"):
-        # API может принять пустой запрос (ничего не менять) или отклонить
         assert response.status_code in [200, 400], f"Ожидался 200 или 400, получен {response.status_code}"
         allure.attach(str(response.json()), name="Response", attachment_type=allure.attachment_type.JSON)
+
+    with allure.step("Проверка, что фильм НЕ изменился в БД (если статус 400)"):
+        if response.status_code == 400:
+            movie_after = get_movie_from_db(movie_id)
+            assert movie_after is not None, f"Фильм с ID {movie_id} исчез из БД!"
+            assert movie_after.name == original_name, f"Имя изменилось: {original_name} -> {movie_after.name}"
 
     with allure.step("Очистка: удаление фильма через API"):
         delete_resp = api_manager.movies_api.delete_movie(movie_id)
         assert delete_resp.status_code == 200
-        print(f"✅ Фильм {movie_id} удален")
+        allure.attach(f"Фильм {movie_id} удален", name="Cleanup", attachment_type=allure.attachment_type.TEXT)

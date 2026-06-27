@@ -1,6 +1,27 @@
-# исправленный tests/movies/test_positive_create_movie.py
+# tests/movies/test_positive_create_movie.py
 import pytest
 import allure
+from db_requester.db_client import SessionLocal
+from db_requester.movies import MovieDBModel
+
+
+def check_movie_exists_in_db(movie_id: int) -> bool:
+    """Проверяет, существует ли фильм в БД."""
+    session = SessionLocal()
+    try:
+        movie = session.query(MovieDBModel).filter_by(id=movie_id).first()
+        return movie is not None
+    finally:
+        session.close()
+
+
+def get_movie_from_db(movie_id: int):
+    """Получает фильм из БД по ID."""
+    session = SessionLocal()
+    try:
+        return session.query(MovieDBModel).filter_by(id=movie_id).first()
+    finally:
+        session.close()
 
 
 @allure.epic("Movies")
@@ -38,7 +59,14 @@ def test_create_movie(api_manager, movie_payload):
         assert data["location"] == payload["location"], "Локация не совпадает"
         assert data["published"] == payload["published"], "Статус published не совпадает"
 
+    with allure.step("Проверка, что фильм появился в БД"):
+        assert check_movie_exists_in_db(movie_id), f"Фильм с ID {movie_id} не найден в БД!"
+        movie_from_db = get_movie_from_db(movie_id)
+        assert movie_from_db.name == payload["name"], f"Имя в БД не совпадает: {movie_from_db.name} != {payload['name']}"
+        assert movie_from_db.price == payload["price"], f"Цена в БД не совпадает: {movie_from_db.price} != {payload['price']}"
+        allure.attach("Фильм успешно создан в БД", name="DB Check", attachment_type=allure.attachment_type.TEXT)
+
     with allure.step("Очистка: удаление созданного фильма"):
         delete_resp = api_manager.movies_api.delete_movie(movie_id)
         assert delete_resp.status_code == 200, f"Ожидался 200, получен {delete_resp.status_code}"
-        print(f"✅ Фильм {movie_id} удален")
+        allure.attach(f"Фильм {movie_id} удален", name="Cleanup", attachment_type=allure.attachment_type.TEXT)

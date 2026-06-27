@@ -2,6 +2,17 @@
 import pytest
 import allure
 import uuid
+from db_requester.db_client import SessionLocal
+from db_requester.movies import MovieDBModel
+
+
+def get_movie_from_db(movie_id: int):
+    """Получает фильм из БД по ID."""
+    session = SessionLocal()
+    try:
+        return session.query(MovieDBModel).filter_by(id=movie_id).first()
+    finally:
+        session.close()
 
 
 @allure.epic("Movies")
@@ -24,6 +35,11 @@ def test_update_movie(api_manager, movie_payload):
         movie_id = create_response.json()["id"]
         allure.attach(str(movie_id), name="Movie ID", attachment_type=allure.attachment_type.TEXT)
 
+    with allure.step("Проверка, что фильм появился в БД"):
+        movie_before = get_movie_from_db(movie_id)
+        assert movie_before is not None, f"Фильм с ID {movie_id} не найден в БД!"
+        allure.attach(f"Original name: {movie_before.name}", name="DB Before", attachment_type=allure.attachment_type.TEXT)
+
     with allure.step("Подготовка данных для обновления"):
         unique_name = f"Updated Movie {uuid.uuid4()}"
         update_data = {
@@ -41,14 +57,14 @@ def test_update_movie(api_manager, movie_payload):
         update_response = api_manager.movies_api.update_movie(movie_id, update_data)
         assert update_response.status_code == 200, f"Ожидался 200, получен {update_response.status_code}"
 
-    with allure.step("Получение данных обновленного фильма"):
+    with allure.step("Получение данных обновленного фильма из API"):
         data = update_response.json()
         allure.attach(str(data), name="Updated Movie Data", attachment_type=allure.attachment_type.JSON)
 
     with allure.step("Проверка ID"):
         assert data["id"] == movie_id, f"ID не совпадает: ожидался {movie_id}, получен {data['id']}"
 
-    with allure.step("Проверка обновленных полей"):
+    with allure.step("Проверка обновленных полей в ответе API"):
         assert data["name"] == update_data["name"], "Имя не совпадает"
         assert data["description"] == update_data["description"], "Описание не совпадает"
         assert data["price"] == update_data["price"], "Цена не совпадает"
@@ -56,6 +72,15 @@ def test_update_movie(api_manager, movie_payload):
         assert data["imageUrl"] == update_data["imageUrl"], "imageUrl не совпадает"
         assert data["published"] == update_data["published"], "Статус published не совпадает"
         assert data["genreId"] == update_data["genreId"], "genreId не совпадает"
+
+    with allure.step("Проверка, что данные обновились в БД"):
+        movie_after = get_movie_from_db(movie_id)
+        assert movie_after is not None, f"Фильм с ID {movie_id} исчез из БД!"
+        assert movie_after.name == update_data["name"], f"Имя в БД не совпадает: {movie_after.name} != {update_data['name']}"
+        assert movie_after.price == update_data["price"], f"Цена в БД не совпадает: {movie_after.price} != {update_data['price']}"
+        assert movie_after.location == update_data["location"], f"Локация в БД не совпадает: {movie_after.location} != {update_data['location']}"
+        assert movie_after.published == update_data["published"], f"Статус published в БД не совпадает: {movie_after.published} != {update_data['published']}"
+        allure.attach("Данные успешно обновлены в БД", name="DB After", attachment_type=allure.attachment_type.TEXT)
 
     with allure.step("Проверка, что обновленный фильм существует (GET)"):
         get_response = api_manager.movies_api.get_movie(movie_id)
@@ -66,4 +91,4 @@ def test_update_movie(api_manager, movie_payload):
     with allure.step("Очистка: удаление созданного фильма"):
         delete_resp = api_manager.movies_api.delete_movie(movie_id)
         assert delete_resp.status_code == 200, f"Ожидался 200, получен {delete_resp.status_code}"
-        print(f"✅ Фильм {movie_id} удален")
+        allure.attach(f"Фильм {movie_id} удален", name="Cleanup", attachment_type=allure.attachment_type.TEXT)

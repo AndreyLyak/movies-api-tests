@@ -1,6 +1,11 @@
-# обновленный tests/movies/test_movies_with_roles.py
+# tests/movies/test_movies_with_roles.py
 import pytest
 import allure
+import logging
+from db_requester.db_client import SessionLocal
+from db_requester.movies import MovieDBModel
+
+logger = logging.getLogger(__name__)
 
 
 @allure.epic("Movies")
@@ -71,7 +76,7 @@ def test_super_admin_can_create_movie(super_admin, movie_payload):
     with allure.step("Очистка: удаление созданного фильма"):
         delete_resp = super_admin.api.movies_api.delete_movie(movie_id)
         assert delete_resp.status_code == 200
-        print(f"✅ Фильм {movie_id} удален")
+        allure.attach(f"Фильм {movie_id} удален", name="Cleanup", attachment_type=allure.attachment_type.TEXT)
 
 
 @allure.epic("Movies")
@@ -92,12 +97,15 @@ def test_common_user_cannot_delete_movie(common_user, super_admin, movie_payload
         response = common_user.api.movies_api.delete_movie(movie_id, expected_status=403)
         assert response.status_code == 403
 
-    with allure.step("Проверка, что фильм не был удален (он всё ещё существует)"):
-        # Проверяем, что фильм всё ещё доступен
-        get_response = common_user.api.movies_api.get_movie(movie_id)
-        assert get_response.status_code == 200
+    with allure.step("Проверка, что фильм остался в БД"):
+        session = SessionLocal()
+        try:
+            movie = session.query(MovieDBModel).filter_by(id=movie_id).first()
+            assert movie is not None, f"Фильм с ID {movie_id} был удален, хотя не должен был!"
+        finally:
+            session.close()
 
     with allure.step("Очистка: удаление фильма супер-админом"):
         delete_resp = super_admin.api.movies_api.delete_movie(movie_id)
         assert delete_resp.status_code == 200
-        print(f"✅ Фильм {movie_id} удален")
+        allure.attach(f"Фильм {movie_id} удален", name="Cleanup", attachment_type=allure.attachment_type.TEXT)

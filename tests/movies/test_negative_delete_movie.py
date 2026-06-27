@@ -1,8 +1,30 @@
-#исправленный tests/movies/test_negative_delete_movie.py
+# tests/movies/test_negative_delete_movie.py
 import pytest
 import allure
 import requests
 from constants import BASE_URL, MOVIES_ENDPOINT
+from db_requester.db_client import SessionLocal
+from db_requester.movies import MovieDBModel
+
+
+def check_movie_exists_in_db(movie_id: int) -> bool:
+    """Проверяет, существует ли фильм в БД."""
+    session = SessionLocal()
+    try:
+        movie = session.query(MovieDBModel).filter_by(id=movie_id).first()
+        return movie is not None
+    finally:
+        session.close()
+
+
+def check_movie_not_exists_in_db(movie_id: int) -> bool:
+    """Проверяет, что фильм НЕ существует в БД."""
+    session = SessionLocal()
+    try:
+        movie = session.query(MovieDBModel).filter_by(id=movie_id).first()
+        return movie is None
+    finally:
+        session.close()
 
 
 @allure.epic("Movies")
@@ -20,9 +42,8 @@ def test_delete_without_auth(api_manager, movie_payload):
         movie_id = create_response.json()["id"]
         allure.attach(str(movie_id), name="Movie ID", attachment_type=allure.attachment_type.TEXT)
 
-    with allure.step("Проверка, что фильм существует"):
-        get_response = api_manager.movies_api.get_movie(movie_id)
-        assert get_response.status_code == 200
+    with allure.step("Проверка, что фильм есть в БД"):
+        assert check_movie_exists_in_db(movie_id), f"Фильм с ID {movie_id} не найден в БД!"
 
     with allure.step("DELETE запрос без токена авторизации"):
         url = f"{BASE_URL}{MOVIES_ENDPOINT}/{movie_id}"
@@ -32,10 +53,13 @@ def test_delete_without_auth(api_manager, movie_payload):
         assert delete_response.status_code in [401, 403], f"Ожидался 401 или 403, получен {delete_response.status_code}"
         allure.attach(str(delete_response.text), name="Response", attachment_type=allure.attachment_type.TEXT)
 
+    with allure.step("Проверка, что фильм остался в БД (не удалился без авторизации)"):
+        assert check_movie_exists_in_db(movie_id), f"Фильм с ID {movie_id} был удален без авторизации!"
+
     with allure.step("Очистка: удаление фильма через API"):
         delete_resp = api_manager.movies_api.delete_movie(movie_id)
         assert delete_resp.status_code == 200
-        print(f"✅ Фильм {movie_id} удален")
+        allure.attach(f"Фильм {movie_id} удален", name="Cleanup", attachment_type=allure.attachment_type.TEXT)
 
 
 @allure.epic("Movies")
@@ -91,9 +115,15 @@ def test_double_delete_movie(api_manager, movie_payload):
         movie_id = create_response.json()["id"]
         allure.attach(str(movie_id), name="Movie ID", attachment_type=allure.attachment_type.TEXT)
 
+    with allure.step("Проверка, что фильм есть в БД"):
+        assert check_movie_exists_in_db(movie_id), f"Фильм с ID {movie_id} не найден в БД!"
+
     with allure.step("Первое удаление фильма (ожидаем 200)"):
         first_delete = api_manager.movies_api.delete_movie(movie_id)
         assert first_delete.status_code == 200, f"Ожидался 200, получен {first_delete.status_code}"
+
+    with allure.step("Проверка, что фильм удален из БД"):
+        assert check_movie_not_exists_in_db(movie_id), f"Фильм с ID {movie_id} остался в БД после удаления!"
 
     with allure.step("Второе удаление фильма (ожидаем 404)"):
         second_delete = api_manager.movies_api.delete_movie(movie_id, expected_status=404)
@@ -109,22 +139,19 @@ def test_double_delete_movie(api_manager, movie_payload):
 @pytest.mark.api
 @pytest.mark.movie
 def test_delete_then_get_movie(api_manager, movie_payload):
-    """Удаление фильма и проверка, что он исчез"""
+    """Удаление фильма и проверка, что он исчез из БД"""
     with allure.step("Создание фильма через API"):
         create_response = api_manager.movies_api.create_movie(movie_payload())
         assert create_response.status_code == 201
         movie_id = create_response.json()["id"]
         allure.attach(str(movie_id), name="Movie ID", attachment_type=allure.attachment_type.TEXT)
 
-    with allure.step("Проверка, что фильм существует (GET 200)"):
-        get_response = api_manager.movies_api.get_movie(movie_id)
-        assert get_response.status_code == 200, f"Ожидался 200, получен {get_response.status_code}"
+    with allure.step("Проверка, что фильм есть в БД"):
+        assert check_movie_exists_in_db(movie_id), f"Фильм с ID {movie_id} не найден в БД!"
 
     with allure.step("Удаление фильма (ожидаем 200)"):
         delete_response = api_manager.movies_api.delete_movie(movie_id)
         assert delete_response.status_code == 200, f"Ожидался 200, получен {delete_response.status_code}"
 
-    with allure.step("Проверка, что фильм исчез (GET 404)"):
-        get_after_delete = api_manager.movies_api.get_movie(movie_id, expected_status=404)
-        assert get_after_delete.status_code == 404, f"Ожидался 404, получен {get_after_delete.status_code}"
-        allure.attach(str(get_after_delete.json()), name="Response", attachment_type=allure.attachment_type.JSON)
+    with allure.step("Проверка, что фильм удален из БД"):
+        assert check_movie_not_exists_in_db(movie_id), f"Фильм с ID {movie_id} остался в БД после удаления!"

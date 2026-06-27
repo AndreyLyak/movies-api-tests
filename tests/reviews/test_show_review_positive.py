@@ -1,7 +1,24 @@
-#обновленный tests/reviews/test_show_review_positive.py
+# tests/reviews/test_show_review_positive.py
 import pytest
 import allure
 import uuid
+from db_requester.db_client import SessionLocal
+from sqlalchemy import text
+
+
+def get_review_from_db(movie_id: int, user_id: str = None):
+    """Получает отзыв из БД по movie_id и user_id."""
+    session = SessionLocal()
+    try:
+        query = "SELECT * FROM reviews WHERE movie_id = :movie_id"
+        params = {"movie_id": movie_id}
+        if user_id:
+            query += " AND user_id = :user_id"
+            params["user_id"] = user_id
+        result = session.execute(text(query), params).fetchone()
+        return dict(result._mapping) if result else None
+    finally:
+        session.close()
 
 
 @allure.epic("Reviews")
@@ -36,20 +53,43 @@ def test_show_review(api_manager, movie_payload):
         allure.attach(str(user_id), name="User ID", attachment_type=allure.attachment_type.TEXT)
         allure.attach(str(review_data), name="Created Review", attachment_type=allure.attachment_type.JSON)
 
+    with allure.step("Проверка, что отзыв есть в БД"):
+        review_before = get_review_from_db(movie_id, user_id)
+        assert review_before is not None, "Отзыв не найден в БД!"
+        allure.attach("Отзыв есть в БД", name="DB Before", attachment_type=allure.attachment_type.TEXT)
+
     with allure.step("Скрытие отзыва"):
         hide_resp = api_manager.reviews_api.hide_review(movie_id, user_id)
         assert hide_resp.status_code == 200, f"Ожидался 200, получен {hide_resp.status_code}"
         allure.attach(str(hide_resp.json()), name="Hide Response", attachment_type=allure.attachment_type.JSON)
 
+    with allure.step("Проверка, что отзыв скрыт в БД (если есть поле hidden)"):
+        review_after_hide = get_review_from_db(movie_id, user_id)
+        assert review_after_hide is not None, "Отзыв исчез из БД!"
+        if "hidden" in review_after_hide:
+            assert review_after_hide["hidden"] is True or review_after_hide["hidden"] == 1, "Отзыв не был скрыт в БД!"
+            allure.attach("Отзыв скрыт в БД", name="DB After Hide", attachment_type=allure.attachment_type.TEXT)
+        else:
+            allure.attach("Поле hidden отсутствует в БД", name="DB Info", attachment_type=allure.attachment_type.TEXT)
+
     with allure.step("Показ отзыва обратно"):
         show_resp = api_manager.reviews_api.show_review(movie_id, user_id)
         assert show_resp.status_code == 200, f"Ожидался 200, получен {show_resp.status_code}"
 
-    with allure.step("Получение данных показанного отзыва"):
+    with allure.step("Получение данных показанного отзыва из API"):
         data = show_resp.json()
         allure.attach(str(data), name="Show Response", attachment_type=allure.attachment_type.JSON)
 
-    with allure.step("Проверка данных отзыва"):
+    with allure.step("Проверка, что отзыв показан в БД (если есть поле hidden)"):
+        review_after_show = get_review_from_db(movie_id, user_id)
+        assert review_after_show is not None, "Отзыв исчез из БД!"
+        if "hidden" in review_after_show:
+            assert review_after_show["hidden"] is False or review_after_show["hidden"] == 0, "Отзыв не был показан в БД!"
+            allure.attach("Отзыв показан в БД", name="DB After Show", attachment_type=allure.attachment_type.TEXT)
+        else:
+            allure.attach("Поле hidden отсутствует в БД", name="DB Info", attachment_type=allure.attachment_type.TEXT)
+
+    with allure.step("Проверка данных отзыва в ответе API"):
         assert data["userId"] == user_id, f"userId не совпадает: ожидался {user_id}, получен {data['userId']}"
         assert "rating" in data, "Поле 'rating' отсутствует"
         assert "text" in data, "Поле 'text' отсутствует"
@@ -59,4 +99,4 @@ def test_show_review(api_manager, movie_payload):
     with allure.step("Очистка: удаление фильма"):
         delete_resp = api_manager.movies_api.delete_movie(movie_id)
         assert delete_resp.status_code == 200, f"Ожидался 200, получен {delete_resp.status_code}"
-        print(f"✅ Фильм {movie_id} удален")
+        allure.attach(f"Фильм {movie_id} удален", name="Cleanup", attachment_type=allure.attachment_type.TEXT)

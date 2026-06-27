@@ -44,6 +44,17 @@ def get_or_create_movie_in_db(movie_id: int):
         session.close()
 
 
+def check_movie_deleted_from_db(movie_id: int):
+    """Проверяет, что фильм удален из БД."""
+    session = SessionLocal()
+    try:
+        movie = session.query(MovieDBModel).filter_by(id=movie_id).first()
+        assert movie is None, f"Фильм с ID {movie_id} остался в БД!"
+        logger.info(f"Фильм с ID {movie_id} удален из БД")
+    finally:
+        session.close()
+
+
 @allure.epic("Movies")
 @allure.feature("Удаление фильмов")
 @allure.severity(allure.severity_level.CRITICAL)
@@ -65,9 +76,8 @@ def test_delete_movie_by_super_admin(api_manager, movie_payload, super_admin):
         delete_resp = super_admin.api.movies_api.delete_movie(movie_id)
         assert delete_resp.status_code == 200
 
-    with allure.step("Проверка, что фильм удален"):
-        get_resp = api_manager.movies_api.get_movie(movie_id, expected_status=404)
-        assert get_resp.status_code == 404
+    with allure.step("Проверка, что фильм удален из БД"):
+        check_movie_deleted_from_db(movie_id)
 
 
 @allure.epic("Movies")
@@ -89,6 +99,15 @@ def test_delete_movie_by_admin(api_manager, movie_payload, super_admin, admin_us
     with allure.step("Попытка удалить фильм админом (ожидаем 403)"):
         delete_resp = admin_user.api.movies_api.delete_movie(movie_id, expected_status=403)
         assert delete_resp.status_code == 403
+
+    with allure.step("Проверка, что фильм остался в БД"):
+        session = SessionLocal()
+        try:
+            movie = session.query(MovieDBModel).filter_by(id=movie_id).first()
+            assert movie is not None, f"Фильм с ID {movie_id} был удален, хотя не должен был!"
+            logger.info(f"Фильм с ID {movie_id} остался в БД (как и ожидалось)")
+        finally:
+            session.close()
 
     with allure.step("Очистка: удаляем фильм супер-админом"):
         super_admin.api.movies_api.delete_movie(movie_id)
@@ -114,6 +133,15 @@ def test_delete_movie_by_common_user(api_manager, movie_payload, super_admin, co
         delete_resp = common_user.api.movies_api.delete_movie(movie_id, expected_status=403)
         assert delete_resp.status_code == 403
 
+    with allure.step("Проверка, что фильм остался в БД"):
+        session = SessionLocal()
+        try:
+            movie = session.query(MovieDBModel).filter_by(id=movie_id).first()
+            assert movie is not None, f"Фильм с ID {movie_id} был удален, хотя не должен был!"
+            logger.info(f"Фильм с ID {movie_id} остался в БД (как и ожидалось)")
+        finally:
+            session.close()
+
     with allure.step("Очистка: удаляем фильм супер-админом"):
         super_admin.api.movies_api.delete_movie(movie_id)
 
@@ -138,6 +166,15 @@ def test_delete_movie_unauthorized(movie_payload, super_admin):
         url = f"{BASE_URL}{MOVIES_ENDPOINT}/{movie_id}"
         response = requests.delete(url)
         assert response.status_code == 401
+
+    with allure.step("Проверка, что фильм остался в БД"):
+        session = SessionLocal()
+        try:
+            movie = session.query(MovieDBModel).filter_by(id=movie_id).first()
+            assert movie is not None, f"Фильм с ID {movie_id} был удален, хотя не должен был!"
+            logger.info(f"Фильм с ID {movie_id} остался в БД (как и ожидалось)")
+        finally:
+            session.close()
 
     with allure.step("Очистка: удаляем фильм супер-админом"):
         super_admin.api.movies_api.delete_movie(movie_id)

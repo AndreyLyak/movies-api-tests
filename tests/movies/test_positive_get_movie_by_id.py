@@ -130,7 +130,7 @@ def test_movie_structure(api_manager, movie_payload):
         with allure.step("Очистка: удаление созданного фильма"):
             delete_resp = api_manager.movies_api.delete_movie(created_movie_id)
             assert delete_resp.status_code == 200, f"Ожидался 200, получен {delete_resp.status_code}"
-            print(f"✅ Фильм {created_movie_id} удален")
+            allure.attach(f"Фильм {created_movie_id} удален", name="Cleanup", attachment_type=allure.attachment_type.TEXT)
 
 
 @allure.epic("Movies")

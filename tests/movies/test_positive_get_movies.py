@@ -1,7 +1,19 @@
-# обновленный tests/movies/test_positive_get_movies.py
+# tests/movies/test_positive_get_movies.py
 import pytest
 import allure
 import uuid
+from db_requester.db_client import SessionLocal
+from db_requester.movies import MovieDBModel
+
+
+def check_movie_exists_in_db(movie_id: int) -> bool:
+    """Проверяет, существует ли фильм в БД."""
+    session = SessionLocal()
+    try:
+        movie = session.query(MovieDBModel).filter_by(id=movie_id).first()
+        return movie is not None
+    finally:
+        session.close()
 
 
 @allure.epic("Movies")
@@ -29,6 +41,10 @@ def test_movie_structure(api_manager, movie_payload):
         allure.attach(str(movie_id), name="Movie ID", attachment_type=allure.attachment_type.TEXT)
 
     try:
+        with allure.step("Проверка, что фильм появился в БД"):
+            assert check_movie_exists_in_db(movie_id), f"Фильм с ID {movie_id} не найден в БД!"
+            allure.attach("Фильм успешно создан в БД", name="DB Check", attachment_type=allure.attachment_type.TEXT)
+
         with allure.step(f"Получение фильма по ID {movie_id}"):
             get_response = api_manager.movies_api.get_movie(movie_id)
             assert get_response.status_code == 200, f"Ожидался 200, получен {get_response.status_code}"
@@ -54,4 +70,5 @@ def test_movie_structure(api_manager, movie_payload):
         with allure.step("Очистка: удаление созданного фильма"):
             delete_resp = api_manager.movies_api.delete_movie(movie_id)
             assert delete_resp.status_code == 200, f"Ожидался 200, получен {delete_resp.status_code}"
-            print(f"✅ Фильм {movie_id} удален")
+            allure.attach(f"Фильм {movie_id} удален", name="Cleanup",
+                          attachment_type=allure.attachment_type.TEXT)
