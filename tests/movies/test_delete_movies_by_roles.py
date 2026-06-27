@@ -163,11 +163,13 @@ def test_delete_movie_unauthorized(movie_payload, super_admin):
         get_or_create_movie_in_db(movie_id)
 
     with allure.step("Попытка удалить фильм без авторизации (ожидаем 401)"):
+        # Создаём сессию без токена
+        import requests
         url = f"{BASE_URL}{MOVIES_ENDPOINT}/{movie_id}"
         response = requests.delete(url)
         assert response.status_code == 401
 
-    with allure.step("Проверка, что фильм остался в БД"):
+    with allure.step("Проверка, что фильм остался в БД (прямая проверка)"):
         session = SessionLocal()
         try:
             movie = session.query(MovieDBModel).filter_by(id=movie_id).first()
