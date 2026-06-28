@@ -1,6 +1,8 @@
 import pytest
 import requests
 import uuid
+import random
+from datetime import datetime
 from auth import get_auth_token
 from api.api_manager import ApiManager
 import logging
@@ -9,6 +11,11 @@ from enums.roles import Roles
 from entities.user import User
 from models.user_model import TestUser
 from utils.data_generator import DataGenerator
+from sqlalchemy.orm import Session
+from db_requester.db_client import get_db_session
+from typing import Generator
+from helpers.db_helper import DBHelper
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -209,3 +216,60 @@ def admin_user(user_session, super_admin, creation_user_data):
 
     admin_user.api.auth_api.authenticate(admin_user.creds)
     return admin_user
+
+@pytest.fixture(scope="module")
+def db_session() -> Generator[Session, None, None]:
+    """
+    Фикстура, которая создает и возвращает сессию для работы с базой данных
+    После завершения теста сессия автоматически закрывается
+    """
+    db_session = get_db_session()
+    yield db_session
+    db_session.close()
+
+@pytest.fixture(scope="function")
+def db_helper(db_session) -> DBHelper:
+    """
+    Фикстура для экземпляра хелпера
+    """
+    db_helper = DBHelper(db_session)
+    return db_helper
+
+
+@pytest.fixture
+def test_movie_data():
+    """Данные для тестового фильма с уникальным ID"""
+    unique_id = random.randint(900000, 999999)
+
+    return {
+        "id": unique_id,
+        "name": f"Тестовый фильм CRUD {unique_id}",
+        "price": 300,
+        "description": "Описание для CRUD теста",
+        "image_url": "https://example.com/crud_test.jpg",
+        "location": "SPB",
+        "published": True,
+        "rating": 5,
+        "genre_id": 1,
+        "created_at": datetime.now()
+    }
+
+
+@pytest.fixture
+def created_test_movie(db_helper, test_movie_data):
+    """
+    Фикстура, которая создает тестовый фильм в БД
+    и удаляет его после завершения теста
+    """
+    # Если фильм с таким ID уже есть, удаляем его перед созданием
+    if db_helper.movie_exists_by_id(test_movie_data["id"]):
+        existing_movie = db_helper.get_movie_by_id(test_movie_data["id"])
+        db_helper.delete_movie(existing_movie)
+        print(f"🧹 Очистка: удален существующий фильм {test_movie_data['id']}")
+
+    movie = db_helper.create_test_movie(test_movie_data)
+    yield movie
+    # Cleanup после теста
+    if db_helper.movie_exists_by_id(movie.id):
+        db_helper.delete_movie(movie)
+        print(f"🧹 Очистка: фильм {movie.id} удален")

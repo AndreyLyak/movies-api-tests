@@ -1,44 +1,25 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import List, Optional
+# models/user_model.py
+from pydantic import BaseModel, Field
+from typing import Optional, List
 from enums.roles import Roles
-import datetime
-
-
-class TestUser(BaseModel):
-    __test__ = False
-    model_config = ConfigDict(use_enum_values=True)
-    email: str
-    fullName: str
-    password: str
-    passwordRepeat: str = Field(..., min_length=1, max_length=20, description="Пароли должны совпадать")
-    roles: List[Roles] = [Roles.USER]
-    verified: Optional[bool] = None
-    banned: Optional[bool] = None
-
-    @field_validator("passwordRepeat")
-    @classmethod
-    def check_password_repeat(cls, value: str, info) -> str:
-        if "password" in info.data and value != info.data["password"]:
-            raise ValueError("Пароли не совпадают")
-        return value
 
 
 class RegisterUserResponse(BaseModel):
-    __test__ = False
-    model_config = ConfigDict(use_enum_values=True)
+    """Модель ответа при регистрации пользователя"""
     id: str
-    email: str = Field(pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+    email: str
     fullName: str
     verified: bool
-    banned: bool
-    roles: List[Roles]
-    createdAt: str
+    banned: Optional[bool] = None
+    roles: List[str]
+    createdAt: str = Field(alias="createdAt")
+    updatedAt: Optional[str] = Field(None, alias="updatedAt")
 
-    @field_validator("createdAt")
-    @classmethod
-    def validate_created_at(cls, value: str) -> str:
-        try:
-            datetime.datetime.fromisoformat(value)
-        except ValueError:
-            raise ValueError("Некорректный формат даты и времени")
-        return value
+
+class TestUser(BaseModel):
+    """Модель для тестовых данных пользователя"""
+    email: str
+    fullName: str
+    password: str
+    passwordRepeat: str
+    roles: List[Roles] = [Roles.USER]

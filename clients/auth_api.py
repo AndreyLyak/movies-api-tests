@@ -1,3 +1,4 @@
+# clients/auth_api.py
 from custom_requester.custom_requester import CustomRequester
 
 
@@ -8,7 +9,7 @@ class AuthAPI(CustomRequester):
         self.session = session
         super().__init__(session, self.AUTH_BASE_URL)
 
-    def login_user(self, login_data, expected_status=200):
+    def login_user(self, login_data, expected_status=201):
         """Авторизация пользователя"""
         return self.send_request(
             method="POST",
