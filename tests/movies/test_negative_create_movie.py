@@ -46,10 +46,13 @@ def test_create_movie_invalid_price(api_manager, movie_payload):
 
     with allure.step("Проверка статус-кода 400"):
         assert response.status_code == 400, f"Ожидался 400, получен {response.status_code}"
-        allure.attach(str(response.json()), name="Error Response", attachment_type=allure.attachment_type.JSON)
-
-    with allure.step("Проверка сообщения об ошибке"):
         error_data = response.json()
+        allure.attach(str(error_data), name="Error Response", attachment_type=allure.attachment_type.JSON)
+
+    with allure.step("Проверка структуры ошибки"):
+        assert "statusCode" in error_data, "Ответ должен содержать statusCode"
+        assert error_data["statusCode"] == 400, "statusCode должен быть 400"
+        assert "message" in error_data, "Ответ должен содержать message"
         assert "price" in str(error_data).lower() or "больше 0" in str(error_data), "Ошибка должна быть связана с ценой"
 
 
@@ -82,7 +85,14 @@ def test_create_movie_duplicate(api_manager, movie_payload):
 
     with allure.step("Проверка статус-кода 409 (Conflict)"):
         assert second_response.status_code == 409, f"Ожидался 409, получен {second_response.status_code}"
-        allure.attach(str(second_response.json()), name="Error Response", attachment_type=allure.attachment_type.JSON)
+        error_data = second_response.json()
+        allure.attach(str(error_data), name="Error Response", attachment_type=allure.attachment_type.JSON)
+
+    with allure.step("Проверка структуры ошибки"):
+        assert "statusCode" in error_data, "Ответ должен содержать statusCode"
+        assert error_data["statusCode"] == 409, "statusCode должен быть 409"
+        assert "message" in error_data, "Ответ должен содержать message"
+        assert "существует" in str(error_data) or "exists" in str(error_data), "Ошибка должна быть о дубликате"
 
     with allure.step("Очистка: удаление созданного фильма"):
         delete_resp = api_manager.movies_api.delete_movie(movie_id)
@@ -108,11 +118,14 @@ def test_create_movie_empty_name(api_manager, movie_payload):
 
     with allure.step("Проверка статус-кода 400"):
         assert response.status_code == 400, f"Ожидался 400, получен {response.status_code}"
-        allure.attach(str(response.json()), name="Error Response", attachment_type=allure.attachment_type.JSON)
+        error_data = response.json()
+        allure.attach(str(error_data), name="Error Response", attachment_type=allure.attachment_type.JSON)
 
-    with allure.step("Проверка, что фильм НЕ создался в БД"):
-        # ID не существует, так как фильм не создался
-        assert "id" not in response.json(), "Фильм создался, хотя не должен был!"
+    with allure.step("Проверка структуры ошибки"):
+        assert "statusCode" in error_data, "Ответ должен содержать statusCode"
+        assert error_data["statusCode"] == 400, "statusCode должен быть 400"
+        assert "message" in error_data, "Ответ должен содержать message"
+        assert "name" in str(error_data).lower() or "пуст" in str(error_data), "Ошибка должна быть связана с name"
 
 
 @allure.epic("Movies")
@@ -134,11 +147,14 @@ def test_create_movie_missing_required_field(api_manager, movie_payload):
 
     with allure.step("Проверка статус-кода 400"):
         assert response.status_code == 400, f"Ожидался 400, получен {response.status_code}"
-        allure.attach(str(response.json()), name="Error Response", attachment_type=allure.attachment_type.JSON)
+        error_data = response.json()
+        allure.attach(str(error_data), name="Error Response", attachment_type=allure.attachment_type.JSON)
 
-    with allure.step("Проверка, что фильм НЕ создался в БД"):
-        # ID не существует, так как фильм не создался
-        assert "id" not in response.json(), "Фильм создался, хотя не должен был!"
+    with allure.step("Проверка структуры ошибки"):
+        assert "statusCode" in error_data, "Ответ должен содержать statusCode"
+        assert error_data["statusCode"] == 400, "statusCode должен быть 400"
+        assert "message" in error_data, "Ответ должен содержать message"
+        assert "name" in str(error_data).lower() or "строк" in str(error_data), "Ошибка должна быть связана с name"
 
 
 @allure.epic("Movies")
@@ -159,10 +175,15 @@ def test_create_movie_invalid_genre(api_manager, movie_payload):
 
     with allure.step("Проверка статус-кода 400"):
         assert response.status_code == 400, f"Ожидался 400, получен {response.status_code}"
-        allure.attach(str(response.json()), name="Error Response", attachment_type=allure.attachment_type.JSON)
+        error_data = response.json()
+        allure.attach(str(error_data), name="Error Response", attachment_type=allure.attachment_type.JSON)
 
-    with allure.step("Проверка, что фильм НЕ создался в БД"):
-        assert "id" not in response.json(), "Фильм создался, хотя не должен был!"
+    with allure.step("Проверка структуры ошибки"):
+        assert "statusCode" in error_data, "Ответ должен содержать statusCode"
+        assert error_data["statusCode"] == 400, "statusCode должен быть 400"
+        assert "message" in error_data, "Ответ должен содержать message"
+        # Проверяем, что это ошибка валидации (не конкретное сообщение о жанре)
+        assert isinstance(error_data.get("message"), str), "message должен быть строкой"
 
 
 @allure.epic("Movies")
@@ -186,8 +207,15 @@ def test_create_movie_without_auth(movie_payload):
 
     with allure.step("Проверка статус-кода 401 (Unauthorized)"):
         assert response.status_code == 401, f"Ожидался 401, получен {response.status_code}"
-        allure.attach(str(response.json()), name="Error Response", attachment_type=allure.attachment_type.JSON)
+        error_data = response.json()
+        allure.attach(str(error_data), name="Error Response", attachment_type=allure.attachment_type.JSON)
+
+    with allure.step("Проверка структуры ошибки"):
+        assert "statusCode" in error_data, "Ответ должен содержать statusCode"
+        assert error_data["statusCode"] == 401, "statusCode должен быть 401"
+        assert "message" in error_data, "Ответ должен содержать message"
+        assert "auth" in str(error_data).lower() or "token" in str(error_data).lower(), "Ошибка должна быть связана с авторизацией"
 
     with allure.step("Проверка, что фильм НЕ создался в БД"):
-        # При 401 ответе ID не будет
-        assert "id" not in response.json(), "Фильм создался без авторизации!"
+        # Проверяем, что id нет в ответе (фильм не создался)
+        assert "id" not in error_data, "Фильм создался без авторизации!"
